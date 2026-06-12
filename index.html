@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Vertiv | 全材质导体载流选型及搭接工艺专家系统</title>
+    <style>
+        :root {
+            --vertiv-orange: #ff4d00; --industry-blue: #0f172a; --ai-glow: #38bdf8;
+            --card-bg: #1e293b; --text-main: #f1f5f9; --border: #334155;
+        }
+        body {
+            font-family: 'Segoe UI', "PingFang SC", sans-serif; background-color: var(--industry-blue);
+            color: var(--text-main); margin: 0; padding: 20px;
+            background-image: radial-gradient(circle at 2% 2%, rgba(56, 189, 248, 0.1) 0%, transparent 20%);
+        }
+        header {
+            display: flex; align-items: center; padding: 12px 25px;
+            background: rgba(15, 23, 42, 0.9); border-bottom: 3px solid var(--vertiv-orange);
+            border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        .logo { font-weight: 900; font-size: 28px; color: var(--vertiv-orange); margin-right: 20px; letter-spacing: -1px; }
+        .main-grid { display: grid; grid-template-columns: 390px 1fr; gap: 20px; max-width: 1650px; margin: 0 auto; }
+        .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; position: relative; }
+        .input-group { margin-bottom: 12px; }
+        label { display: block; font-size: 11px; color: var(--ai-glow); margin-bottom: 5px; font-weight: 700; text-transform: uppercase; }
+        input, select { width: 100%; background: #0b121f; border: 1px solid var(--border); color: white; padding: 10px; border-radius: 6px; font-size: 13px; box-sizing: border-box; }
+        input:focus, select:focus { border-color: var(--ai-glow); outline: none; }
+        .btn-match { 
+            width: 100%; padding: 14px; background: linear-gradient(135deg, var(--vertiv-orange), #cc3d00); color: white; border: none; 
+            border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; text-transform: uppercase; letter-spacing: 1px;
+            box-shadow: 0 4px 12px rgba(255,77,0,0.3); transition: 0.2s;
+        }
+        .btn-match:hover { transform: translateY(-1px); box-shadow: 0 6px 15px rgba(255,77,0,0.5); }
+        .res-display { 
+            margin-top: 20px; padding: 18px; border-radius: 10px;
+            background: linear-gradient(135deg, rgba(56,189,248,0.08) 0%, rgba(15,23,42,1) 100%); 
+            border: 1px solid rgba(56,189,248,0.2); border-left: 5px solid var(--ai-glow);
+        }
+        .spec-val { font-size: 30px; font-weight: 800; color: white; display: block; margin: 5px 0; }
+        .chart-container { display: grid; grid-template-rows: 280px 1fr; gap: 20px; }
+        canvas { background: #0b121f; border-radius: 10px; width: 100%; }
+        .tag { display: inline-block; padding: 2px 6px; border-radius: 3px; background: var(--vertiv-orange); color: white; font-size: 10px; margin-right: 5px; vertical-align: middle; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo">VERTIV</div>
+    <h2 style="margin:0; font-size:18px; background: linear-gradient(90deg, #fff, var(--ai-glow)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">全材质导体载流选型及搭接工艺专家系统</h2>
+</header>
+
+<div class="main-grid">
+    <div class="card">
+        <div class="input-group">
+            <label>⚡ 目标电流需求 (A)</label>
+            <input type="number" id="targetI" value="1250">
+        </div>
+        <div class="input-group">
+            <label>🧬 导体方案材质</label>
+            <select id="material" onchange="adaptTempSpecs()">
+                <option value="copper">硬铜排 TMY (依据附件载流表)</option>
+                <option value="aluminum">硬铝排 LMY (依据附件载流表)</option>
+                <option value="cca">铜铝排 (依据附件载流表)</option>
+                <option value="vfb">软铜排 VFB (依据附件载流表)</option>
+            </select>
+        </div>
+        
+        <div class="input-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div>
+                <label>🌡️ 实际工作环境温度 (°C)</label>
+                <input type="number" id="actEnvTemp" value="40">
+            </div>
+            <div>
+                <label>🔝 实际允许最高温度 (°C)</label>
+                <input type="number" id="actMaxTemp" value="85">
+            </div>
+        </div>
+
+        <div class="input-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div>
+                <label>📋 匹配查表基准环境列</label>
+                <select id="tableEnvCol"></select>
+            </div>
+            <div>
+                <label>🔢 手动控制并联根数</label>
+                <select id="parallelN">
+                    <option value="1">1 根排 (单片)</option>
+                    <option value="2">2 根并联</option>
+                    <option value="3">3 根并联</option>
+                    <option value="4">4 根并联</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="input-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div>
+                <label>🏗️ 安装敷设方式</label>
+                <select id="mount">
+                    <option value="v">立放 (竖直竖放)</option>
+                    <option value="h">平放 (水平降容)</option>
+                </select>
+            </div>
+            <div>
+                <label>⚡ 电网系统频率 (Hz)</label>
+                <input type="number" id="freq" value="50">
+            </div>
+        </div>
+        <button class="btn-match" onclick="runExpertEngine()">智 能 匹 配 算 法</button>
+        <div class="res-display">
+            <span style="font-size:11px; color:var(--ai-glow); font-weight:bold;">AI 深度推荐方案 (纯尺寸表达):</span>
+            <span class="spec-val" id="specOut">--</span>
+            <div id="detailOut" style="font-size:12px; color:#94a3b8; line-height:1.6;"></div>
+        </div>
+    </div>
+
+    <div class="chart-container">
+        <div class="card" style="padding:15px;">
+            <label>📊 经济载流量密度分析曲线</label>
+            <canvas id="ecoChart" height="250"></canvas>
+        </div>
+        <div class="card" style="padding:15px;">
+            <label>🛠️ 2D 正视标准搭接与钻孔工艺标注图 (单位: mm)</label>
+            <canvas id="canvas2d" height="320"></canvas>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 原始真实附件CSV数据库封装 
+    const DB_ALUMINUM = [[15,3,165,155,145,134],[20,3,215,202,189,174],[25,3,265,249,233,215],[30,4,365,343,321,296],[40,4,480,451,422,389],[40,5,540,507,475,438],[50,5,665,625,585,539],[50,6.3,740,695,651,600],[63,6.3,870,818,765,705],[80,6.3,1150,1080,1010,932],[100,6.3,1425,1340,1255,1155],[63,8,1025,965,902,831],[80,8,1320,1240,1160,1070],[100,8,1625,1530,1430,1315],[125,8,1900,1785,1670,1540],[63,10,1155,1085,1016,936],[80,10,1480,1390,1300,1200],[100,10,1820,1710,1600,1475],[125,10,2070,1945,1820,1680]];
+    const DB_COPPER = [[15,3,210,197,185,170],[20,3,275,258,242,223],[25,3,340,320,299,276],[30,4,475,446,418,385],[40,4,625,587,550,506],[40,5,700,659,615,567],[50,5,860,809,756,697],[50,6.3,955,898,840,774],[63,6.3,1125,1056,990,912],[80,6.3,1480,1390,1300,1200],[100,6.3,1810,1700,1590,1470],[63,8,1320,1240,1160,1070],[80,8,1690,1590,1490,1370],[100,8,2080,1955,1830,1685],[125,8,2400,2255,2110,1945],[63,10,1475,1388,1300,1195],[80,10,1900,1786,1670,1540],[100,10,2310,2170,2030,1870],[125,10,2650,2490,2330,2150],[150,10,2894,2728,2562,2360],[125,15,3139,2959,2779,2560],[150,15,3569,3364,3159,2910],[200,10,3858,3637,3416,3147],[200,15,4758,4486,4213,3880],[200,20,5630,5307,4984,4590]];
+    const DB_CCA = [[15,4,226,245,263],[20,4,293,317,341],[25,4,353,381,410],[30,4,367,387,417],[30,5,405,450,484],[30,6,460,533,575],[30,8,548,644,697],[30,10,607,705,736],[40,4,428,500,532],[40,5,511,600,643],[40,6,580,679,728],[40,8,686,806,873],[40,10,752,888,961],[50,5,649,752,800],[50,6,738,836,898],[50,8,872,990,1072],[50,10,947,1084,1158],[60,5,742,874,932],[60,6,842,953,1025],[60,8,989,1124,1216],[60,10,1070,1215,1315],[80,6,1154,1306,1421],[80,8,1350,1534,1682],[80,10,1454,1643,1799],[100,6,1369,1550,1686],[100,8,1606,1823,2000],[100,10,1730,1955,2140],[120,8,1858,2110,2313],[120,10,2018,2283,2497],[140,8,2130,2418,2652],[140,10,2348,2674,2905],[160,8,2374,2695,2937],[160,10,2615,2977,3234],[180,8,2632,2988,3276],[180,10,2900,3303,3589],[180,12,3010,3451,3752],[200,8,2887,3279,3594],[200,10,3183,3624,3938],[200,12,3305,3788,4123]];
+    const DB_VFB = [[20,2,214,247,276],[20,3,270,310,343],[20,4,329,376,420],[20,5,361,409,448],[20,6,401,416,491],[20,8,483,554,619],[20,10,574,654,738],[24,3,311,360,401],[24,4,371,420,471],[24,5,418,480,541],[24,6,465,539,601],[24,8,551,630,703],[24,10,629,715,791],[32,3,406,463,514],[32,4,468,536,591],[32,5,531,603,671],[32,6,576,669,742],[32,8,684,782,874],[32,10,774,885,987],[40,3,432,495,557],[40,4,542,603,658],[40,5,631,718,803],[40,6,691,794,893],[40,10,910,1032,1158],[50,4,642,715,785],[50,5,754,865,963],[50,6,832,946,1063],[50,8,942,1096,1224],[50,10,1076,1230,1368],[63,5,912,1017,1113],[63,6,1004,1143,1265],[63,8,1153,1320,1476],[63,10,1279,1472,1632],[80,5,1038,1166,1276],[80,6,1214,1361,1492],[80,8,1392,1587,1732],[80,10,1536,1763,1929],[80,12,1693,1889,2079],[100,5,1335,1530,1703],[100,6,1452,1671,1851],[100,8,1607,1803,1981],[100,10,1763,1968,2168]];
+
+    // 各种材质表单的物理基准最高运行温度
+    const BASE_MAX_TEMPS = { copper: 70, aluminum: 70, cca: 110, vfb: 115 };
+
+    // 动态同步基础环境参考列
+    function adaptTempSpecs() {
+        const mat = document.getElementById('material').value;
+        const colSel = document.getElementById('tableEnvCol');
+        const maxInput = document.getElementById('actMaxTemp');
+        
+        // 初始化默认推荐工作温度
+        maxInput.value = BASE_MAX_TEMPS[mat];
+        
+        colSel.innerHTML = "";
+        let envCols = [];
+        if(mat === 'copper' || mat === 'aluminum') {
+            envCols = [{v:0, t:"25°C 基础列"}, {v:1, t:"30°C 基础列"}, {v:2, t:"35°C 基础列"}, {v:3, t:"40°C 基础列"}];
+        } else if(mat === 'cca') {
+            envCols = [{v:0, t:"60°C 基础列"}, {v:1, t:"45°C 中风列"}, {v:2, t:"45°C 强风列"}];
+        } else {
+            envCols = [{v:0, t:"75°C 基础列"}, {v:1, t:"65°C 基础列"}, {v:2, t:"55°C 基础列"}];
+        }
+        
+        envCols.forEach(c => {
+            let opt = document.createElement("option");
+            opt.value = c.v; opt.innerText = c.t;
+            colSel.appendChild(opt);
+        });
+    }
+
+    function runExpertEngine() {
+        const target = parseFloat(document.getElementById('targetI').value);
+        const mat = document.getElementById('material').value;
+        const colIdx = parseInt(document.getElementById('tableEnvCol').value);
+        const n = parseInt(document.getElementById('parallelN').value);
+        const isFlat = document.getElementById('mount').value === 'h';
+        const f = parseFloat(document.getElementById('freq').value) || 50;
+
+        // 获取用户输入的实际环境及最高允许工作温度
+        const tActualEnv = parseFloat(document.getElementById('actEnvTemp').value);
+        const tActualMax = parseFloat(document.getElementById('actMaxTemp').value);
+        
+        if (tActualMax <= tActualEnv) {
+            alert("错误：最高工作温度必须大于实际环境温度！");
+            return;
+        }
+
+        // 解析对应表格的基准物理温升
+        let tBaseMax = BASE_MAX_TEMPS[mat];
+        let tBaseEnv = 25; // 默认基准环境
+        
+        if (mat === 'copper' || mat === 'aluminum') {
+            tBaseEnv = [25, 30, 35, 40][colIdx];
+        } else if (mat === 'cca') {
+            tBaseEnv = colIdx === 0 ? 60 : 45;
+        } else if (mat === 'vfb') {
+            tBaseEnv = [75, 65, 55][colIdx];
+        }
+
+        let deltaTBase = tBaseMax - tBaseEnv;
+        let deltaTActual = tActualMax - tActualEnv;
+
+        // 🧠 核心算法：依据环境温度和最高允许温度对载流量进行根号温升折算
+        let kTemp折算 = Math.sqrt(deltaTActual / deltaTBase);
+
+        // 并联降容因子
+        const multFactor = [1.0, 1.0, 1.58, 2.15, 2.60][n];
+        const skinK = f > 50 ? Math.sqrt(50/f) : 1.0;
+
+        let db = [];
+        if(mat === 'copper') db = DB_COPPER;
+        else if(mat === 'aluminum') db = DB_ALUMINUM;
+        else if(mat === 'cca') db = DB_CCA;
+        else db = DB_VFB;
+
+        let best = null;
+        let points = [];
+
+        db.forEach(d => {
+            let baseI = d[2 + colIdx];
+            let flatK = isFlat ? (d[0] <= 63 ? 0.95 : 0.92) : 1.0;
+            
+            // 综合折算公式
+            let cap = baseI * kTemp折算 * multFactor * skinK * flatK;
+            
+            points.push({ x: d[0] * d[1] * n, y: cap, w: d[0], t: d[1] });
+            
+            if (cap >= target && !best) {
+                best = { w: d[0], t: d[1], cap: cap };
+            }
+        });
+
+        // 边界兜底
+        if(!best && db.length > 0) {
+            let last = db[db.length - 1];
+            let flatK = isFlat ? (last[0] <= 63 ? 0.95 : 0.92) : 1.0;
+            best = { w: last[0], t: last[1], cap: last[2+colIdx] * kTemp折算 * multFactor * skinK * flatK };
+        }
+
+        updateUI(best, target, points, n, kTemp折算, deltaTActual);
+    }
+
+    function updateUI(m, target, pts, n, kTemp, dTAct) {
+        if(!m) return;
+        document.getElementById('specOut').innerText = `${m.w} × ${m.t} mm`;
+        document.getElementById('detailOut').innerHTML = `
+            <div>系统折算后总载流量: <b style="color:white">${m.cap.toFixed(0)} A</b></div>
+            <div>实际运行设计温升: <b style="color:var(--vertiv-orange)">${dTAct.toFixed(1)} K</b></div>
+            <div>温度折算系数 (Kt): <b style="color:var(--ai-glow)">${kTemp.toFixed(3)}</b></div>
+            <div>并联配置: <b style="color:white">${n} 根并联</b></div>
+            <div>设计电流密度: <b style="color:white">${(target / (m.w * m.t * n)).toFixed(2)} A/mm²</b></div>
+        `;
+        drawEcoChart(pts, m, target);
+        render2DDiagram(m.w, m.t);
+    }
+
+    function drawEcoChart(pts, match, target) {
+        const canvas = document.getElementById('ecoChart');
+        const ctx = canvas.getContext('2d');
+        canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight;
+        
+        const padX = 70; const padY = 50;
+        const maxX = Math.max(...pts.map(p => p.x)) * 1.15;
+        const maxY = Math.max(...pts.map(p => p.y, target)) * 1.2;
+        
+        const getX = x => padX + (x / maxX) * (canvas.width - padX - 30);
+        const getY = y => canvas.height - padY - (y / maxY) * (canvas.height - padY - 20);
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // 坐标轴
+        ctx.strokeStyle = "#475569"; ctx.lineWidth = 1.5; ctx.beginPath();
+        ctx.moveTo(padX, 20); ctx.lineTo(padX, canvas.height - padY);
+        ctx.lineTo(canvas.width - 20, canvas.height - padY); ctx.stroke();
+
+        // 横纵轴标题和单位
+        ctx.fillStyle = "#94a3b8"; ctx.font = "11px sans-serif";
+        ctx.save();
+        ctx.translate(22, canvas.height / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText("系统折算载流量 (单位: A)", -60, 0);
+        ctx.restore();
+        ctx.fillText("总导电截面积 (单位: mm²)", canvas.width / 2 - 60, canvas.height - 15);
+
+        // 刻度
+        ctx.fillStyle = "#64748b"; ctx.font = "10px Arial";
+        for(let i=0; i<=4; i++) {
+            let curX = maxX * (i/4); let curY = maxY * (i/4);
+            ctx.fillText(curX.toFixed(0), getX(curX) - 10, canvas.height - padY + 15);
+            ctx.fillText(curY.toFixed(0), padX - 35, getY(curY) + 4);
+        }
+
+        // 目标线
+        ctx.strokeStyle = "#ff4d00"; ctx.setLineDash([4, 4]); ctx.beginPath();
+        ctx.moveTo(padX, getY(target)); ctx.lineTo(canvas.width - 20, getY(target)); ctx.stroke();
+        ctx.setLineDash([]); ctx.fillStyle = "#ff4d00";
+        ctx.fillText(`需求目标: ${target}A`, canvas.width - 110, getY(target) - 6);
+
+        // 数据点
+        pts.forEach(p => {
+            const isMatch = (p.w === match.w && p.t === match.t);
+            ctx.fillStyle = isMatch ? "#38bdf8" : "#334155";
+            ctx.beginPath(); ctx.arc(getX(p.x), getY(p.y), isMatch ? 6 : 3.5, 0, 2 * Math.PI); ctx.fill();
+            if(isMatch) {
+                ctx.strokeStyle = "#fff"; ctx.lineWidth = 1; ctx.stroke();
+                ctx.fillStyle = "#fff"; ctx.fillText(`推荐点 (${p.w}x${p.t})`, getX(p.x) + 8, getY(p.y) - 4);
+            }
+        });
+    }
+
+    function render2DDiagram(w, t) {
+        const canvas = document.getElementById('canvas2d');
+        const ctx = canvas.getContext('2d');
+        canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        let specs = { bolt: 10, phi: 11, D: 20, C: 0, F: 0, type: 1 };
+        if (w >= 50 && w <= 63) specs = { bolt: 12, phi: 13.5, C: 28, D: 23, F: 0, type: 2 };
+        else if (w > 63) specs = { bolt: 12, phi: 13.5, C: 40, F: 17, D: 0, type: 3 };
+
+        const startX = 80; const startY = 60;
+        const viewW = 280; const viewH = 140;
+
+        // 母排2D图形
+        ctx.fillStyle = "#334155"; ctx.strokeStyle = "#64748b"; ctx.lineWidth = 2;
+        ctx.fillRect(startX, startY, viewW, viewH);
+        ctx.strokeRect(startX, startY, viewW, viewH);
+
+        ctx.fillStyle = "#0b121f"; ctx.lineWidth = 1;
+
+        function drawHole(x, y) {
+            ctx.beginPath(); ctx.arc(x, y, 7, 0, 2*Math.PI); ctx.fill();
+            ctx.strokeStyle = "#38bdf8"; ctx.stroke();
+            ctx.strokeStyle = "rgba(56, 189, 248, 0.4)";
+            ctx.beginPath(); ctx.moveTo(x-15, y); ctx.lineTo(x+15, y); ctx.moveTo(x, y-15); ctx.lineTo(x, y+15); ctx.stroke();
+        }
+
+        function drawDimLine(x1, y1, x2, y2, txt, offsetDir="up") {
+            ctx.strokeStyle = "#38bdf8"; ctx.lineWidth = 1; ctx.fillStyle = "#38bdf8";
+            ctx.font = "bold 11px Arial";
+            ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+            let mx = (x1 + x2) / 2; let my = (y1 + y2) / 2;
+            ctx.fillText(txt, mx - 10, offsetDir === "up" ? my - 5 : my + 12);
+        }
+
+        const midY = startY + viewH / 2;
+        const midX = startX + viewW / 2;
+
+        if (specs.type === 1) {
+            drawHole(midX, midY);
+            drawDimLine(startX, startY - 15, midX, startY - 15, `D = ${specs.D}`);
+            drawDimLine(startX, startY - 15, startX, startY, "");
+            drawDimLine(midX, startY - 15, midX, midY - 10, "");
+        } else if (specs.type === 2) {
+            let h1x = midX - 35; let h1y = midY - 25;
+            let h2x = midX + 35; let h2y = midY + 25;
+            drawHole(h1x, h1y); drawHole(h2x, h2y);
+            drawDimLine(h1x, h1y, h2x, h2y, `C = ${specs.C}`, "up");
+            drawDimLine(startX, startY - 15, h1x, startY - 15, `D = ${specs.D}`);
+            drawDimLine(startX, startY - 15, startX, startY, "");
+        } else {
+            let h1x = midX - 45; let h2x = midX + 45;
+            let h1y = midY - 30; let h2y = midY + 30;
+            drawHole(h1x, h1y); drawHole(h2x, h1y);
+            drawHole(h1x, h2y); drawHole(h2x, h2y);
+            drawDimLine(h1x, h1y, h2x, h1y, `C = ${specs.C}`, "up");
+            drawDimLine(h1x, h1y, h1x, h2y, `F = ${specs.F}`, "left");
+        }
+
+        drawDimLine(startX - 25, startY, startX - 25, startY + viewH, `W = ${w}`, "left");
+        drawDimLine(startX - 25, startY, startX, startY, "");
+        drawDimLine(startX - 25, startY + viewH, startX, startY + viewH, "");
+
+        ctx.fillStyle = "#f1f5f9"; ctx.font = "12px sans-serif";
+        ctx.fillText(`工艺校核: 母排厚度 T = ${t} mm | 螺栓标准 = M${specs.bolt} | 冲孔加工直径 Φ = ${specs.phi} mm`, startX, startY + viewH + 35);
+    }
+
+    window.onload = function() {
+        adaptTempSpecs();
+        runExpertEngine();
+    };
+</script>
+</body>
+</html>
